@@ -75,7 +75,15 @@ abstract public class AbstractImportTest {
     }
 
     private Map<String, List<RealmImport>> readRealmImports(String location) {
-        Map<String, Map<String, List<RealmImport>>> nestedMap = keycloakImportProvider.readFromLocations(location).getRealmImports();
+        Map<String, Map<String, List<RealmImport>>> nestedMap = getNestedMap(location);
+        return flattenNestedMap(nestedMap);
+    }
+
+    private Map<String, Map<String, List<RealmImport>>> getNestedMap(String location) {
+        return keycloakImportProvider.readFromLocations(location).getRealmImports();
+    }
+
+    private Map<String, List<RealmImport>> flattenNestedMap(Map<String, Map<String, List<RealmImport>>> nestedMap) {
         return nestedMap.entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
