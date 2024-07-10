@@ -1,23 +1,3 @@
-/*-
- * ---license-start
- * keycloak-config-cli
- * ---
- * Copyright (C) 2017 - 2021 adorsys GmbH & Co. KG @ https://adorsys.com
- * ---
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * ---license-end
- */
-
 package de.adorsys.keycloak.config;
 
 import de.adorsys.keycloak.config.configuration.TestConfiguration;
@@ -37,6 +17,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -82,15 +64,30 @@ abstract public class AbstractImportTest {
     }
 
     public List<RealmImport> getImport(String fileName) {
-        String location = "classpath:" + this.resourcePath + '/' + fileName;
-        return keycloakImportProvider
-                .readFromLocations(location)
-                .getRealmImports()
-                .get(location)
-                .entrySet()
-                .stream()
-                .findFirst()
-                .orElseThrow()
-                .getValue();
+        String location = buildLocation(fileName);
+        Map<String, List<RealmImport>> realmImportMap = readRealmImports(location);
+
+        return getFirstEntryValue(realmImportMap, location);
+    }
+
+    private String buildLocation(String fileName) {
+        return "classpath:" + this.resourcePath + '/' + fileName;
+    }
+
+    private Map<String, List<RealmImport>> readRealmImports(String location) {
+        Map<String, Map<String, List<RealmImport>>> nestedMap = keycloakImportProvider.readFromLocations(location).getRealmImports();
+        return nestedMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().values().stream().flatMap(List::stream).collect(Collectors.toList())
+                ));
+    }
+
+    private List<RealmImport> getFirstEntryValue(Map<String, List<RealmImport>> realmImportMap, String location) {
+        List<RealmImport> realmImports = realmImportMap.get(location);
+        if (realmImports == null || realmImports.isEmpty()) {
+            throw new IllegalArgumentException("No realm imports found for location: " + location);
+        }
+        return realmImports;
     }
 }
